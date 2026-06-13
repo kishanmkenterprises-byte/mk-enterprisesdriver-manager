@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Virtual Camera</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0a0f;
+    color: #e8e8f0;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px;
+  }
+
+  h1 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: #a78bfa;
+    margin-bottom: 4px;
+  }
+
+  .subtitle {
+    font-size: 0.78rem;
+    color: #666;
+    margin-bottom: 24px;
+    text-align: center;
+  }
+
+  .camera-box {
+    width: 100%;
+    max-width: 480px;
+    aspect-ratio: 4/3;
+    background: #111118;
+    border: 1.5px solid #2a2a3a;
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #preview {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: none;
+  }
+
+  #videoFeed {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: none;
+  }
+
+  .placeholder {
+    text-align: center;
+    color: #444;
+    padding: 24px;
+  }
+
+  .placeholder svg {
+    margin-bottom: 12px;
+    opacity: 0.4;
+  }
+
+  .placeholder p {
+    font-size: 0.85rem;
+  }
+
+  .badge {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    background: rgba(239,68,68,0.85);
+    color: white;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    padding: 3px 8px;
+    border-radius: 20px;
+    display: none;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .badge-dot {
+    width: 6px;
+    height: 6px;
+    background: white;
+    border-radius: 50%;
+    animation: blink 1.2s infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.2; }
+  }
+
+  .controls {
+    width: 100%;
+    max-width: 480px;
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .btn {
+    width: 100%;
+    padding: 13px;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+
+  .btn:active { transform: scale(0.98); opacity: 0.85; }
+
+  .btn-primary {
+    background: #7c3aed;
+    color: white;
+  }
+
+  .btn-secondary {
+    background: #1e1e2e;
+    color: #a78bfa;
+    border: 1.5px solid #2a2a3a;
+  }
+
+  .btn-green {
+    background: #065f46;
+    color: #6ee7b7;
+    border: 1.5px solid #064e3b;
+    display: none;
+  }
+
+  .btn-red {
+    background: #7f1d1d;
+    color: #fca5a5;
+    border: 1.5px solid #6b1212;
+    display: none;
+  }
+
+  #fileInput { display: none; }
+
+  .info-box {
+    width: 100%;
+    max-width: 480px;
+    background: #111118;
+    border: 1px solid #1e1e30;
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-top: 16px;
+    font-size: 0.78rem;
+    color: #888;
+    line-height: 1.6;
+  }
+
+  .info-box strong { color: #a78bfa; }
+
+  .step {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 6px;
+    align-items: flex-start;
+  }
+
+  .step-num {
+    background: #2a1f4e;
+    color: #a78bfa;
+    font-size: 0.65rem;
+    font-weight: 700;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .filename {
+    position: absolute;
+    bottom: 10px;
+    right: 12px;
+    background: rgba(0,0,0,0.6);
+    color: #a78bfa;
+    font-size: 0.65rem;
+    padding: 3px 8px;
+    border-radius: 20px;
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+<h1>📷 Virtual Camera</h1>
+<p class="subtitle">Gallery photo ko camera feed ki tarah use karo</p>
+
+<div class="camera-box">
+  <div class="placeholder" id="placeholderEl">
+    <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+      <circle cx="12" cy="13" r="4"/>
+    </svg>
+    <p>Koi photo select nahi ki</p>
+  </div>
+  <img id="preview" alt="Selected photo" />
+  <video id="videoFeed" autoplay muted playsinline></video>
+  <div class="badge" id="liveBadge"><span class="badge-dot"></span> LIVE</div>
+  <div class="filename" id="filenameEl"></div>
+</div>
+
+<div class="controls">
+  <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+    🖼️ Gallery se Photo Choose Karo
+  </button>
+  <input type="file" id="fileInput" accept="image/*" onchange="loadPhoto(event)" />
+
+  <button class="btn btn-secondary" id="realCamBtn" onclick="startRealCamera()">
+    📹 Real Camera Kholo
+  </button>
+
+  <button class="btn btn-green" id="captureBtn" onclick="capturePhoto()">
+    📸 Photo Capture Karo
+  </button>
+
+  <button class="btn btn-red" id="stopCamBtn" onclick="stopCamera()">
+    ⛔ Camera Band Karo
+  </button>
+</div>
+
+<div class="info-box">
+  <div class="step">
+    <span class="step-num">1</span>
+    <span><strong>Gallery se photo choose karo</strong> — ye photo camera ki jagah dikhegi</span>
+  </div>
+  <div class="step">
+    <span class="step-num">2</span>
+    <span>Jab koi site camera maange, <strong>is tab ko open rakho</strong> aur photo already selected hogi</span>
+  </div>
+  <div class="step">
+    <span class="step-num">3</span>
+    <span><strong>Screen share trick:</strong> Kuch sites mein "Share Screen" se is tab ki screen share karo — wo camera feed ki jagah kaam karega</span>
+  </div>
+</div>
+
+<canvas id="canvas" style="display:none"></canvas>
+
+<script>
+  let stream = null;
+
+  function loadPhoto(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    stopCamera();
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const preview = document.getElementById('preview');
+      const placeholder = document.getElementById('placeholderEl');
+      const badge = document.getElementById('liveBadge');
+      const filenameEl = document.getElementById('filenameEl');
+      const captureBtn = document.getElementById('captureBtn');
+
+      preview.src = e.target.result;
+      preview.style.display = 'block';
+      placeholder.style.display = 'none';
+      badge.style.display = 'flex';
+      captureBtn.style.display = 'block';
+
+      filenameEl.textContent = file.name;
+      filenameEl.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function startRealCamera() {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      const video = document.getElementById('videoFeed');
+      const preview = document.getElementById('preview');
+      const placeholder = document.getElementById('placeholderEl');
+      const badge = document.getElementById('liveBadge');
+      const captureBtn = document.getElementById('captureBtn');
+      const stopBtn = document.getElementById('stopCamBtn');
+      const filenameEl = document.getElementById('filenameEl');
+
+      video.srcObject = stream;
+      video.style.display = 'block';
+      preview.style.display = 'none';
+      placeholder.style.display = 'none';
+      badge.style.display = 'flex';
+      captureBtn.style.display = 'block';
+      stopBtn.style.display = 'block';
+      filenameEl.style.display = 'none';
+    } catch (err) {
+      alert('Camera access nahi mila: ' + err.message);
+    }
+  }
+
+  function stopCamera() {
+    if (stream) {
+      stream.getTracks().forEach(t => t.stop());
+      stream = null;
+    }
+    const video = document.getElementById('videoFeed');
+    video.srcObject = null;
+    video.style.display = 'none';
+    document.getElementById('stopCamBtn').style.display = 'none';
+  }
+
+  function capturePhoto() {
+    const canvas = document.getElementById('canvas');
+    const preview = document.getElementById('preview');
+    const video = document.getElementById('videoFeed');
+
+    let source = video.style.display !== 'none' ? video : preview;
+    let w = source.videoWidth || source.naturalWidth || source.clientWidth;
+    let h = source.videoHeight || source.naturalHeight || source.clientHeight;
+
+    canvas.width = w;
+    canvas.height = h;
+    canvas.getContext('2d').drawImage(source, 0, 0, w, h);
+
+    const link = document.createElement('a');
+    link.download = 'virtual-cam-capture.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }
+</script>
+</body>
+</html>
